@@ -1,0 +1,55 @@
+.gradle/
+.idea/
+.settings/
+build/
+*/build/
+/gradle
+gradlew
+gradlew.bat
+
+.metadata/
+.recommenders/
+target/
+*.classpath
+*.project
+
+
+MANIFEST.MF
+.mymetadata
+/bin/
+.lock
+.ini
+.plugins/
+*.iml
+
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**
+!**/src/test/**
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+### VS Code ###
+.vscode/
