@@ -244,16 +244,19 @@ class Thread implements Runnable {
     /**
      * The minimum priority that a thread can have.
      */
+    // 最低优先级
     public final static int MIN_PRIORITY = 1;
 
    /**
      * The default priority that is assigned to a thread.
      */
-    public final static int NORM_PRIORITY = 5;
+   // 普通优先级，也是默认的
+   public final static int NORM_PRIORITY = 5;
 
     /**
      * The maximum priority that a thread can have.
      */
+    // 最大优先级
     public final static int MAX_PRIORITY = 10;
 
     /**
@@ -362,6 +365,10 @@ class Thread implements Runnable {
      * @param inheritThreadLocals if {@code true}, inherit initial values for
      *            inheritable thread-locals from the constructing thread
      */
+    // g 代表线程组，线程组可以对组内的线程进行批量的操作，比如批量的打断 interrupt
+    // target 是我们要运行的对象
+    // name 我们可以自己传，如果不传默认是 "Thread-" + nextThreadNum()，nextThreadNum 方法返回的是自增的数字
+    // stackSize 可以设置堆栈的大小
     private void init(ThreadGroup g, Runnable target, String name,
                       long stackSize, AccessControlContext acc,
                       boolean inheritThreadLocals) {
@@ -370,7 +377,7 @@ class Thread implements Runnable {
         }
 
         this.name = name;
-
+        // 当前线程作为父线程
         Thread parent = currentThread();
         SecurityManager security = System.getSecurityManager();
         if (g == null) {
@@ -405,8 +412,11 @@ class Thread implements Runnable {
         g.addUnstarted();
 
         this.group = g;
+        // 子线程会继承父线程的守护属性
         this.daemon = parent.isDaemon();
+        // 子线程会继承父线程的守护属性
         this.priority = parent.getPriority();
+        // classLoader
         if (security == null || isCCLOverridden(parent.getClass()))
             this.contextClassLoader = parent.getContextClassLoader();
         else
@@ -415,6 +425,8 @@ class Thread implements Runnable {
                 acc != null ? acc : AccessController.getContext();
         this.target = target;
         setPriority(priority);
+        // 当父线程的 inheritableThreadLocals 的属性值不为空时
+        // 会把 inheritableThreadLocals 里面的值全部传递给子线程
         if (inheritThreadLocals && parent.inheritableThreadLocals != null)
             this.inheritableThreadLocals =
                 ThreadLocal.createInheritedMap(parent.inheritableThreadLocals);
@@ -422,6 +434,7 @@ class Thread implements Runnable {
         this.stackSize = stackSize;
 
         /* Set thread ID */
+        // 线程 id 自增
         tid = nextThreadID();
     }
 
@@ -444,6 +457,7 @@ class Thread implements Runnable {
      * name. Automatically generated names are of the form
      * {@code "Thread-"+}<i>n</i>, where <i>n</i> is an integer.
      */
+    // 无参构造器，线程名字自动生成
     public Thread() {
         init(null, null, "Thread-" + nextThreadNum(), 0);
     }
@@ -696,6 +710,7 @@ class Thread implements Runnable {
      * @see        #run()
      * @see        #stop()
      */
+    // 该方法可以创建一个新的线程出来
     public synchronized void start() {
         /**
          * This method is not invoked for the main method thread or "system"
@@ -704,6 +719,7 @@ class Thread implements Runnable {
          *
          * A zero status value corresponds to state "NEW".
          */
+        // 如果没有初始化，抛异常
         if (threadStatus != 0)
             throw new IllegalThreadStateException();
 
@@ -711,23 +727,28 @@ class Thread implements Runnable {
          * so that it can be added to the group's list of threads
          * and the group's unstarted count can be decremented. */
         group.add(this);
-
+        // started 是个标识符，我们在做一些事情的时候，经常这么写
+        // 动作发生之前标识符是 false，发生完成之后变成 true
         boolean started = false;
         try {
+            // 这里会创建一个新的线程，执行完成之后，新的线程已经在运行了，既 target 的内容已经在运行了
             start0();
+            // 这里执行的还是主线程
             started = true;
         } finally {
             try {
+                // 如果失败，把线程从线程组中删除
                 if (!started) {
                     group.threadStartFailed(this);
                 }
+            // Throwable 可以捕捉一些 Exception 捕捉不到的异常，比如说子线程抛出的异常
             } catch (Throwable ignore) {
                 /* do nothing. If start0 threw a Throwable then
                   it will be passed up the call stack */
             }
         }
     }
-
+    // 开启新线程使用的是 native 方法
     private native void start0();
 
     /**
@@ -743,6 +764,7 @@ class Thread implements Runnable {
      * @see     #Thread(ThreadGroup, Runnable, String)
      */
     @Override
+    // 简单的运行，不会新起线程，target 是 Runnable
     public void run() {
         if (target != null) {
             target.run();

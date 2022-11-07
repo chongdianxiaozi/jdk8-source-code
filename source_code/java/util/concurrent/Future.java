@@ -116,6 +116,10 @@ public interface Future<V> {
      * typically because it has already completed normally;
      * {@code true} otherwise
      */
+    // 如果任务已经成功了，或已经取消了，是无法再取消的，会直接返回取消成功(true)
+    // 如果任务还没有开始进行时，发起取消，是可以取消成功的。
+    // 如果取消时，任务已经在运行了，mayInterruptIfRunning 为 true 的话，就可以打断运行中的线程
+    // mayInterruptIfRunning 为 false，表示不能打断直接返回
     boolean cancel(boolean mayInterruptIfRunning);
 
     /**
@@ -124,6 +128,8 @@ public interface Future<V> {
      *
      * @return {@code true} if this task was cancelled before it completed
      */
+    // 返回线程是否已经被取消了，true 表示已经被取消了
+    // 如果线程已经运行结束了，isCancelled 和 isDone 返回的都是 true
     boolean isCancelled();
 
     /**
@@ -135,6 +141,7 @@ public interface Future<V> {
      *
      * @return {@code true} if this task completed
      */
+    // 线程是否已经运行结束了
     boolean isDone();
 
     /**
@@ -148,6 +155,9 @@ public interface Future<V> {
      * @throws InterruptedException if the current thread was interrupted
      * while waiting
      */
+    // 等待结果返回
+    // 如果任务被取消了，抛 CancellationException 异常
+    // 如果等待过程中被打断了，抛 InterruptedException 异常
     V get() throws InterruptedException, ExecutionException;
 
     /**
@@ -164,6 +174,7 @@ public interface Future<V> {
      * while waiting
      * @throws TimeoutException if the wait timed out
      */
+    // 等待，但是带有超时时间的，如果超时时间外仍然没有响应，抛 TimeoutException 异常
     V get(long timeout, TimeUnit unit)
         throws InterruptedException, ExecutionException, TimeoutException;
 }
