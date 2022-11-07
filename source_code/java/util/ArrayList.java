@@ -162,6 +162,7 @@ public class ArrayList<E> extends AbstractList<E>
     /**
      * Constructs an empty list with an initial capacity of ten.
      */
+    // 无参数直接初始化，数组大小为空
     public ArrayList() {
         this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
     }
@@ -174,16 +175,21 @@ public class ArrayList<E> extends AbstractList<E>
      * @param c the collection whose elements are to be placed into this list
      * @throws NullPointerException if the specified collection is null
      */
+    // 指定初始数据初始化
     public ArrayList(Collection<? extends E> c) {
         Object[] a = c.toArray();
+        // 如果给定的集合（c）数据有值
         if ((size = a.length) != 0) {
             if (c.getClass() == ArrayList.class) {
+                // elementData 是保存数组的容器，默认为 null
                 elementData = a;
             } else {
+                // 如果集合元素类型不是 ArrayList(Object) 类型，我们会转成 Object
                 elementData = Arrays.copyOf(a, size, Object[].class);
             }
         } else {
             // replace with empty array.
+            // 给定集合（c）无值，则默认空数组
             elementData = EMPTY_ELEMENTDATA;
         }
     }
@@ -223,6 +229,7 @@ public class ArrayList<E> extends AbstractList<E>
     }
 
     private static int calculateCapacity(Object[] elementData, int minCapacity) {
+        // 如果初始化数组大小时，有给定初始值，以给定的大小为准，不走 if 逻辑
         if (elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
             return Math.max(DEFAULT_CAPACITY, minCapacity);
         }
@@ -234,9 +241,11 @@ public class ArrayList<E> extends AbstractList<E>
     }
 
     private void ensureExplicitCapacity(int minCapacity) {
+        // 记录数组被修改
         modCount++;
 
         // overflow-conscious code
+        // 如果我们期望的最小容量大于目前数组的长度，那么就扩容
         if (minCapacity - elementData.length > 0)
             grow(minCapacity);
     }
@@ -255,15 +264,20 @@ public class ArrayList<E> extends AbstractList<E>
      *
      * @param minCapacity the desired minimum capacity
      */
+    // 扩容，并把现有数据拷贝到新的数组里面去
     private void grow(int minCapacity) {
         // overflow-conscious code
         int oldCapacity = elementData.length;
+        // oldCapacity >> 1 是把 oldCapacity 除以 2 的意思
         int newCapacity = oldCapacity + (oldCapacity >> 1);
+        // 如果扩容后的值 < 我们的期望值，扩容后的值就等于我们的期望值
         if (newCapacity - minCapacity < 0)
             newCapacity = minCapacity;
+        // 如果扩容后的值 > jvm 所能分配的数组的最大值，那么就用 Integer 的最大值
         if (newCapacity - MAX_ARRAY_SIZE > 0)
             newCapacity = hugeCapacity(minCapacity);
         // minCapacity is usually close to size, so this is a win:
+        // 通过复制进行扩容
         elementData = Arrays.copyOf(elementData, newCapacity);
     }
 
@@ -407,11 +421,15 @@ public class ArrayList<E> extends AbstractList<E>
      * @throws NullPointerException if the specified array is null
      */
     @SuppressWarnings("unchecked")
+    // List 转化成数组
     public <T> T[] toArray(T[] a) {
+        // 如果数组长度不够，按照 List 的大小进行拷贝，return 的时候返回的都是正确的数组
         if (a.length < size)
+            // 如果返回的数组大小和申明的数组大小一致，那么就会正常返回，否则，一个新数组就会被分配返回
             // Make a new array of a's runtime type, but my contents:
             return (T[]) Arrays.copyOf(elementData, size, a.getClass());
         System.arraycopy(elementData, 0, a, 0, size);
+        // 数组长度大于 List 大小的，赋值为 null
         if (a.length > size)
             a[size] = null;
         return a;
@@ -461,7 +479,9 @@ public class ArrayList<E> extends AbstractList<E>
      * @return <tt>true</tt> (as specified by {@link Collection#add})
      */
     public boolean add(E e) {
+        // 确保数组大小是否足够，不够执行扩容，size 为当前数组的大小
         ensureCapacityInternal(size + 1);  // Increments modCount!!
+        // 直接赋值，线程不安全的
         elementData[size++] = e;
         return true;
     }
@@ -523,6 +543,7 @@ public class ArrayList<E> extends AbstractList<E>
      * @return <tt>true</tt> if this list contained the specified element
      */
     public boolean remove(Object o) {
+        // 如果要删除的值是 null，找到第一个值是 null 的删除
         if (o == null) {
             for (int index = 0; index < size; index++)
                 if (elementData[index] == null) {
@@ -530,6 +551,7 @@ public class ArrayList<E> extends AbstractList<E>
                     return true;
                 }
         } else {
+            // 如果要删除的值不为 null，找到第一个和要删除的值相等的删除
             for (int index = 0; index < size; index++)
                 if (o.equals(elementData[index])) {
                     fastRemove(index);
@@ -544,11 +566,16 @@ public class ArrayList<E> extends AbstractList<E>
      * return the value removed.
      */
     private void fastRemove(int index) {
+        // 记录数组的结构要发生变动了
         modCount++;
+        // numMoved 表示删除 index 位置的元素后，需要从 index 后移动多少个元素到前面去
+        // 减 1 的原因，是因为 size 从 1 开始算起，index 从 0开始算起
         int numMoved = size - index - 1;
         if (numMoved > 0)
+            // 从 index +1 位置开始被拷贝，拷贝的起始位置是 index，长度是 numMoved
             System.arraycopy(elementData, index+1, elementData, index,
                              numMoved);
+        // 数组最后一个位置赋值 null，帮助 GC
         elementData[--size] = null; // clear to let GC do its work
     }
 
@@ -582,7 +609,9 @@ public class ArrayList<E> extends AbstractList<E>
     public boolean addAll(Collection<? extends E> c) {
         Object[] a = c.toArray();
         int numNew = a.length;
+        // 确保容量充足，整个过程只会扩容一次
         ensureCapacityInternal(size + numNew);  // Increments modCount
+        // 进行数组的拷贝
         System.arraycopy(a, 0, elementData, size, numNew);
         size += numNew;
         return numNew != 0;
@@ -717,25 +746,36 @@ public class ArrayList<E> extends AbstractList<E>
         return batchRemove(c, true);
     }
 
+    // 批量删除，removeAll 方法底层调用的是 batchRemove 方法
+    // complement 参数默认是 false,false 的意思是数组中不包含 c 中数据的节点往头移动
+    // true 意思是数组中包含 c 中数据的节点往头移动，这个是根据你要删除数据和原数组大小的比例来决定的
+    // 如果你要删除的数据很多，选择 false 性能更好，当然 removeAll 方法默认就是 false
     private boolean batchRemove(Collection<?> c, boolean complement) {
         final Object[] elementData = this.elementData;
+        // r 表示当前循环的位置、w 位置之前都是不需要被删除的数据，w 位置之后都是需要被删除的数据
         int r = 0, w = 0;
         boolean modified = false;
         try {
+            // 从 0 位置开始判断，当前数组中元素是不是要被删除的元素，不是的话移到数组头
             for (; r < size; r++)
                 if (c.contains(elementData[r]) == complement)
                     elementData[w++] = elementData[r];
         } finally {
             // Preserve behavioral compatibility with AbstractCollection,
             // even if c.contains() throws.
+            // r 和 size 不等，说明在 try 过程中发生了异常，在 r 处断开
+            // 把 r 位置之后的数组移动到 w 位置之后(r 位置之后的数组数据都是没有判断过的数据，这样不会影响没有判断的数据，判断过的数据可以被删除)
             if (r != size) {
                 System.arraycopy(elementData, r,
                                  elementData, w,
                                  size - r);
                 w += size - r;
             }
+            // w != size 说明数组中是有数据需要被删除的
+            // 如果 w、size 相等，说明没有数据需要被删除
             if (w != size) {
                 // clear to let GC do its work
+                // w 之后都是需要删除的数据，赋值为空，帮助 gc
                 for (int i = w; i < size; i++)
                     elementData[i] = null;
                 modCount += size - w;
@@ -846,38 +886,51 @@ public class ArrayList<E> extends AbstractList<E>
      * An optimized version of AbstractList.Itr
      */
     private class Itr implements Iterator<E> {
+        // 迭代过程中，下一个元素的位置，默认从 0 开始。
         int cursor;       // index of next element to return
+        // 新增场景：表示上一次迭代过程中，索引的位置；删除场景：为 -1。
         int lastRet = -1; // index of last element returned; -1 if no such
+        // expectedModCount 表示迭代过程中，期望的版本号；modCount 表示数组实际的版本号。
         int expectedModCount = modCount;
 
         Itr() {}
 
         public boolean hasNext() {
+            // cursor 表示下一个元素的位置，size 表示实际大小，如果两者相等，说明已经没有元素可以迭代了，如果不等，说明还可以迭代
             return cursor != size;
         }
 
         @SuppressWarnings("unchecked")
         public E next() {
+            // 迭代过程中，判断版本号有无被修改，有被修改，抛 ConcurrentModificationException 异常
             checkForComodification();
+            // 本次迭代过程中，元素的索引位置
             int i = cursor;
             if (i >= size)
                 throw new NoSuchElementException();
             Object[] elementData = ArrayList.this.elementData;
             if (i >= elementData.length)
                 throw new ConcurrentModificationException();
+            // 下一次迭代时，元素的位置，为下一次迭代做准备
             cursor = i + 1;
+            // 返回元素值
             return (E) elementData[lastRet = i];
         }
 
         public void remove() {
+            // 如果上一次操作时，数组的位置已经小于 0 了，说明数组已经被删除完了
             if (lastRet < 0)
                 throw new IllegalStateException();
+            // 迭代过程中，判断版本号有无被修改，有被修改，抛 ConcurrentModificationException 异常
             checkForComodification();
 
             try {
                 ArrayList.this.remove(lastRet);
                 cursor = lastRet;
+                // -1 表示元素已经被删除，这里也防止重复删除
                 lastRet = -1;
+                // 删除元素时 modCount 的值已经发生变化，在此赋值给 expectedModCount
+                // 这样下次迭代时，两者的值是一致的了
                 expectedModCount = modCount;
             } catch (IndexOutOfBoundsException ex) {
                 throw new ConcurrentModificationException();
@@ -907,6 +960,7 @@ public class ArrayList<E> extends AbstractList<E>
         }
 
         final void checkForComodification() {
+            // 版本号比较
             if (modCount != expectedModCount)
                 throw new ConcurrentModificationException();
         }
@@ -1250,14 +1304,19 @@ public class ArrayList<E> extends AbstractList<E>
 
     @Override
     public void forEach(Consumer<? super E> action) {
+        // 判断非空
         Objects.requireNonNull(action);
+        // modCount的原始值被拷贝
         final int expectedModCount = modCount;
         @SuppressWarnings("unchecked")
         final E[] elementData = (E[]) this.elementData;
         final int size = this.size;
+        // 每次循环都会判断数组有没有被修改，一旦被修改，停止循环
         for (int i=0; modCount == expectedModCount && i < size; i++) {
+            // 执行循环内容，action 代表我们要干的事情
             action.accept(elementData[i]);
         }
+        // 数组如果被修改了，抛异常
         if (modCount != expectedModCount) {
             throw new ConcurrentModificationException();
         }

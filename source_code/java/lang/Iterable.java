@@ -69,6 +69,7 @@ public interface Iterable<T> {
      * @throws NullPointerException if the specified action is null
      * @since 1.8
      */
+    // default修饰，子类无需强制实现该方法
     default void forEach(Consumer<? super T> action) {
         Objects.requireNonNull(action);
         for (T t : this) {

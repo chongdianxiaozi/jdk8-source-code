@@ -330,17 +330,23 @@ public class PriorityQueue<E> extends AbstractQueue<E>
      *         according to the priority queue's ordering
      * @throws NullPointerException if the specified element is null
      */
+    // 新增元素
     public boolean offer(E e) {
+        // 如果是空元素的话，抛异常
         if (e == null)
             throw new NullPointerException();
         modCount++;
         int i = size;
+        // 队列实际大小大于容量时，进行扩容
+        // 扩容策略是：如果老容量小于 64，2 倍扩容，如果大于 64，50 % 扩容
         if (i >= queue.length)
             grow(i + 1);
         size = i + 1;
+        // 如果队列为空，当前元素正好处于队头
         if (i == 0)
             queue[0] = e;
         else
+            // 如果队列不为空，需要根据优先级进行排序
             siftUp(i, e);
         return true;
     }
@@ -648,13 +654,18 @@ public class PriorityQueue<E> extends AbstractQueue<E>
     }
 
     @SuppressWarnings("unchecked")
+    // 按照从小到大的顺序排列
     private void siftUpComparable(int k, E x) {
         Comparable<? super E> key = (Comparable<? super E>) x;
+        // k 是当前队列实际大小的位置
         while (k > 0) {
+            // 对 k 进行减倍
             int parent = (k - 1) >>> 1;
             Object e = queue[parent];
+            // 如果 x 比 e 大，退出，把 x 放在 k 位置上
             if (key.compareTo((E) e) >= 0)
                 break;
+            // x 比 e 小，继续循环，直到找到 x 比队列中元素大的位置
             queue[k] = e;
             k = parent;
         }

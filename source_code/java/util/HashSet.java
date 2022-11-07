@@ -92,10 +92,11 @@ public class HashSet<E>
     implements Set<E>, Cloneable, java.io.Serializable
 {
     static final long serialVersionUID = -5024744406713321676L;
-
+    // 把 HashMap 组合进来，key 是 Hashset 的 key，value 是下面的 PRESENT
     private transient HashMap<E,Object> map;
 
     // Dummy value to associate with an Object in the backing Map
+    // HashMap 中的 value
     private static final Object PRESENT = new Object();
 
     /**
@@ -115,6 +116,7 @@ public class HashSet<E>
      * @param c the collection whose elements are to be placed into this set
      * @throws NullPointerException if the specified collection is null
      */
+    // 对 HashMap 的容量进行了计算
     public HashSet(Collection<? extends E> c) {
         map = new HashMap<>(Math.max((int) (c.size()/.75f) + 1, 16));
         addAll(c);
@@ -217,6 +219,7 @@ public class HashSet<E>
      * element
      */
     public boolean add(E e) {
+        // 直接使用 HashMap 的 put 方法，进行一些简单的逻辑判断
         return map.put(e, PRESENT)==null;
     }
 

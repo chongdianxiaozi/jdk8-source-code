@@ -135,15 +135,21 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
      */
     public boolean offer(E e) {
         final ReentrantLock lock = this.lock;
+        // 上锁
         lock.lock();
         try {
+            // 使用 PriorityQueue 的扩容，排序等能力
             q.offer(e);
+            // 如果恰好刚放进去的元素正好在队列头
+            // 立马唤醒 take 的阻塞线程，执行 take 操作
+            // 如果元素需要延迟执行的话，可以使其更快的沉睡计时
             if (q.peek() == e) {
                 leader = null;
                 available.signal();
             }
             return true;
         } finally {
+            // 释放锁
             lock.unlock();
         }
     }
@@ -206,20 +212,29 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E>
         lock.lockInterruptibly();
         try {
             for (;;) {
+                // 从队头中拿数据出来
                 E first = q.peek();
+                // 如果为空，说明队列中，没有数据，阻塞住
                 if (first == null)
                     available.await();
                 else {
+                    // 获取队头数据的过期时间
                     long delay = first.getDelay(NANOSECONDS);
+                    // 如果过期了，直接返回队头数据
                     if (delay <= 0)
                         return q.poll();
+                    // 引用置为 null ，便于 gc，这样可以让线程等待时，回收 first 变量
                     first = null; // don't retain ref while waiting
+                    // leader 不为空的话，表示当前队列元素之前已经被设置过阻塞时间了
+                    // 直接阻塞当前线程等待。
                     if (leader != null)
                         available.await();
                     else {
+                        // 之前没有设置过阻塞时间，按照一定的时间进行阻塞
                         Thread thisThread = Thread.currentThread();
                         leader = thisThread;
                         try {
+                            // 进行阻塞
                             available.awaitNanos(delay);
                         } finally {
                             if (leader == thisThread)

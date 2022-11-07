@@ -83,6 +83,8 @@ package java.util;
  * @param <E> the type of elements maintained by this set
  * @since 1.6
  */
+// NavigableSet 接口，定义了迭代的一些规范，和一些取值的特殊方法
+// TreeSet 实现了该方法，也就是说 TreeSet 本身已经定义了迭代的规范
 public interface NavigableSet<E> extends SortedSet<E> {
     /**
      * Returns the greatest element in this set strictly less than the

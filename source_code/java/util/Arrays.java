@@ -2531,20 +2531,29 @@ public class Arrays {
     }
 
     // Like public version, but without range checks.
+    // a：我们要搜索的数组，fromIndex：从那里开始搜索，默认是0； toIndex：搜索到何时停止，默认是数组大小
+    // key：我们需要搜索的值 c：外部比较器
     private static <T> int binarySearch0(T[] a, int fromIndex, int toIndex,
                                          T key, Comparator<? super T> c) {
+        // 如果比较器 c 是空的，直接使用 key 的 Comparable.compareTo 方法进行排序
+        // 假设 key 类型是 String 类型，String 默认实现了 Comparable 接口，就可以直接使用 compareTo 方法进行排序
         if (c == null) {
+            // 这是另外一个方法，使用内部排序器进行比较的方法
             return binarySearch0(a, fromIndex, toIndex, key);
         }
         int low = fromIndex;
         int high = toIndex - 1;
-
+        // 开始位置小于结束位置，就会一直循环搜索
         while (low <= high) {
+            // 假设 low =0，high =10，那么 mid 就是 5，所以说二分的意思主要在这里，每次都是计算索引的中间值
             int mid = (low + high) >>> 1;
             T midVal = a[mid];
+            // 比较数组中间值和给定的值的大小关系
             int cmp = c.compare(midVal, key);
+            // 如果数组中间值小于给定的值，说明我们要找的值在中间值的右边
             if (cmp < 0)
                 low = mid + 1;
+            // 我们要找的值在中间值的左边
             else if (cmp > 0)
                 high = mid - 1;
             else
@@ -3657,11 +3666,18 @@ public class Arrays {
      * @throws NullPointerException if <tt>original</tt> is null
      * @since 1.6
      */
+    // original 原始数组数据
+    // from 拷贝起点
+    // to 拷贝终点
     public static char[] copyOfRange(char[] original, int from, int to) {
+        // 需要拷贝的长度
         int newLength = to - from;
         if (newLength < 0)
             throw new IllegalArgumentException(from + " > " + to);
+        // 初始化新数组
         char[] copy = new char[newLength];
+        // 调用 native 方法进行拷贝，参数的意思分别是：
+        // 被拷贝的数组、从数组那里开始、目标数组、从目的数组那里开始拷贝、拷贝的长度
         System.arraycopy(original, from, copy, 0,
                          Math.min(original.length - from, newLength));
         return copy;
@@ -3803,6 +3819,7 @@ public class Arrays {
     /**
      * @serial include
      */
+    // Arrays类中的ArrayList类(非java.util.ArrayList)并没有实现add方法，当调用add方法时，实际上会调用AbstractList的add方法，此方法只是抛了一个异常
     private static class ArrayList<E> extends AbstractList<E>
         implements RandomAccess, java.io.Serializable
     {
@@ -3810,6 +3827,7 @@ public class Arrays {
         private final E[] a;
 
         ArrayList(E[] array) {
+            // 初始化的时候，直接持有外面的数组，所以外面的数组值一旦发生变化，List的值也会发生变化
             a = Objects.requireNonNull(array);
         }
 

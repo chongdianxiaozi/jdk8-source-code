@@ -974,16 +974,20 @@ public final class String
      * @see  #equalsIgnoreCase(String)
      */
     public boolean equals(Object anObject) {
+        // 判断内存地址是否相同
         if (this == anObject) {
             return true;
         }
+        // 待比较的对象是否是 String，如果不是 String，直接返回不相等
         if (anObject instanceof String) {
             String anotherString = (String)anObject;
             int n = value.length;
+            // 两个字符串的长度是否相等，不等则直接返回不相等
             if (n == anotherString.value.length) {
                 char v1[] = value;
                 char v2[] = anotherString.value;
                 int i = 0;
+                // 依次比较每个字符是否相等，若有一个不等，直接返回不相等
                 while (n-- != 0) {
                     if (v1[i] != v2[i])
                         return false;

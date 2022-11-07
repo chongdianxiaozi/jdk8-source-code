@@ -177,7 +177,10 @@ public class TreeSet<E> extends AbstractSet<E>
      *
      * @return an iterator over the elements in this set in ascending order
      */
-    public Iterator<E> iterator() {
+    // m.navigableKeySet() 是 TreeMap 写了一个子类实现了 NavigableSet
+    // 接口，实现了 TreeSet 定义的迭代规范
+    public Iterator<E> iterator
+    () {
         return m.navigableKeySet().iterator();
     }
 
@@ -188,6 +191,7 @@ public class TreeSet<E> extends AbstractSet<E>
      * @since 1.6
      */
     public Iterator<E> descendingIterator() {
+        // 没有直接使用 HashMap.keySet 的迭代能力
         return m.descendingKeySet().iterator();
     }
 

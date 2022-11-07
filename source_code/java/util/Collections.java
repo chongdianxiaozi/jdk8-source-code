@@ -2001,6 +2001,7 @@ public class Collections {
         private static final long serialVersionUID = 3053995032091335093L;
 
         final Collection<E> c;  // Backing Collection
+        // mutex 就是我们需要锁住的对象
         final Object mutex;     // Object on which to synchronize
 
         SynchronizedCollection(Collection<E> c) {
@@ -2395,6 +2396,7 @@ public class Collections {
         implements List<E> {
         private static final long serialVersionUID = -7754090372962971524L;
 
+        // 这个 List 就是我们需要保证线程安全的类
         final List<E> list;
 
         SynchronizedList(List<E> list) {
@@ -2414,7 +2416,8 @@ public class Collections {
         public int hashCode() {
             synchronized (mutex) {return list.hashCode();}
         }
-
+        // 我们可以看到，List 的所有操作都使用了 synchronized 关键字，来进行加锁
+        // synchronized 是一种悲观锁，能够保证同一时刻，只能有一个线程能够获得锁
         public E get(int index) {
             synchronized (mutex) {return list.get(index);}
         }

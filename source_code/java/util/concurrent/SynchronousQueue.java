@@ -165,6 +165,8 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
     /**
      * Shared internal API for dual stacks and queues.
      */
+    // 堆栈和队列共同的接口
+    // 负责执行 put or take
     abstract static class Transferer<E> {
         /**
          * Performs a put or take.
@@ -179,6 +181,8 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          *         the caller can distinguish which of these occurred
          *         by checking Thread.interrupted.
          */
+        // e 为空的，会直接返回特殊值，不为空会传递给消费者
+        // timed 为 true，说明会有超时时间
         abstract E transfer(E e, boolean timed, long nanos);
     }
 
@@ -208,6 +212,8 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
     static final long spinForTimeoutThreshold = 1000L;
 
     /** Dual stack */
+    // 堆栈 后入先出 非公平
+    // Scherer-Scott 算法
     static final class TransferStack<E> extends Transferer<E> {
         /*
          * This extends Scherer-Scott dual stack algorithm, differing,
@@ -230,9 +236,16 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
 
         /** Node class for TransferStacks. */
         static final class SNode {
+            // 栈的下一个，就是被当前栈压在下面的栈元素
             volatile SNode next;        // next node in stack
+            // 节点匹配，用来判断阻塞栈元素能被唤醒的时机
+            // 比如我们先执行 take，此时队列中没有数据，take 被阻塞了，栈元素为 SNode1
+            // 当有 put 操作时，会把当前 put 的栈元素赋值给 SNode1 的 match 属性，并唤醒 take 操作
+            // 当 take 被唤醒，发现 SNode1 的 match 属性有值时，就能拿到 put 进来的数据，从而返回
             volatile SNode match;       // the node matched to this
+            // 栈元素的阻塞是通过线程阻塞来实现的，waiter 为阻塞的线程
             volatile Thread waiter;     // to control park/unpark
+            // 未投递的消息，或者未消费的消息
             Object item;                // data; or null for REQUESTs
             int mode;
             // Note: item and mode fields don't need to be volatile
@@ -325,6 +338,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          * Puts or takes an item.
          */
         @SuppressWarnings("unchecked")
+        // transfer 方法思路比较复杂，因为 take 和 put 两个方法都揉在了一起
         E transfer(E e, boolean timed, long nanos) {
             /*
              * Basic algorithm is to loop trying one of three actions:
@@ -348,31 +362,53 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
              */
 
             SNode s = null; // constructed/reused as needed
+            // e 为空，说明是 take 方法，不为空是 put 方法
             int mode = (e == null) ? REQUEST : DATA;
-
+            // 自旋
             for (;;) {
+                // 拿出头节点，有几种情况
+                // 1：头节点为空，说明队列中还没有数据
+                // 2：头节点不为空，并且是 take 类型的，说明头节点线程正等着拿数据。
+                // 3：头节点不为空，并且是 put 类型的，说明头节点线程正等着放数据。
                 SNode h = head;
+                // 栈头为空，说明队列中还没有数据。
+                // 栈头不为空，并且栈头的类型和本次操作一致，比如都是 put，那么就把
+                // 本次 put 操作放到该栈头的前面即可，让本次 put 能够先执行
                 if (h == null || h.mode == mode) {  // empty or same-mode
+                    // 设置了超时时间，并且 e 进栈或者出栈要超时了，
+                    // 就会丢弃本次操作，返回 null 值。
+                    // 如果栈头此时被取消了，丢弃栈头，取下一个节点继续消费
                     if (timed && nanos <= 0) {      // can't wait
+                        // 栈头操作被取消
                         if (h != null && h.isCancelled())
+                            // 丢弃栈头，把栈头后一个元素作为栈头
                             casHead(h, h.next);     // pop cancelled node
+                        //栈头是空的，直接返回 null
                         else
                             return null;
+                    // 没有超时，直接把 e 作为新的栈头
                     } else if (casHead(h, s = snode(s, e, h, mode))) {
+                        // e 等待出栈，一种是空队列 take，一种是 put
                         SNode m = awaitFulfill(s, timed, nanos);
                         if (m == s) {               // wait was cancelled
                             clean(s);
                             return null;
                         }
+                        // 本来 s 是栈头的，现在 s 不是栈头了，s 后面又来了一个数，把新的数据作为栈头
                         if ((h = head) != null && h.next == s)
                             casHead(h, s.next);     // help s's fulfiller
                         return (E) ((mode == REQUEST) ? m.item : s.item);
                     }
+                // 栈头正在等待其他线程 put 或 take
+                // 比如栈头正在阻塞，并且是 put 类型，而此次操作正好是 take 类型，走此处
                 } else if (!isFulfilling(h.mode)) { // try to fulfill
+                    // 栈头已经被取消，把下一个元素作为栈头
                     if (h.isCancelled())            // already cancelled
                         casHead(h, h.next);         // pop and retry
+                    // snode 方法第三个参数 h 代表栈头，赋值给 s 的 next 属性
                     else if (casHead(h, s=snode(s, e, h, FULFILLING|mode))) {
                         for (;;) { // loop until matched or waiters disappear
+                            // m 就是栈头，通过上面 snode 方法刚刚赋值
                             SNode m = s.next;       // m is s's match
                             if (m == null) {        // all waiters are gone
                                 casHead(s, null);   // pop fulfill node
@@ -380,6 +416,10 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                                 break;              // restart main loop
                             }
                             SNode mn = m.next;
+                            // tryMatch 非常重要的方法，两个作用：
+                            // 1 唤醒被阻塞的栈头 m，2 把当前节点 s 赋值给 m 的 match 属性
+                            // 这样栈头 m 被唤醒时，就能从 m.match 中得到本次操作 s
+                            // 其中 s.item 记录着本次的操作节点，也就是记录本次操作的数据
                             if (m.tryMatch(s)) {
                                 casHead(s, mn);     // pop both s and m
                                 return (E) ((mode == REQUEST) ? m.item : s.item);
@@ -433,11 +473,16 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
              * and don't wait at all, so are trapped in transfer
              * method rather than calling awaitFulfill.
              */
+            // deadline 死亡时间，如果设置了超时时间的话，死亡时间等于当前时间 + 超时时间，否则就是 0
             final long deadline = timed ? System.nanoTime() + nanos : 0L;
             Thread w = Thread.currentThread();
+            // 自旋的次数，如果设置了超时时间，会自旋 32 次，否则自旋 512 次。
+            // 比如本次操作是 take 操作，自选次数后，仍没有其他线程 put 数据进来
+            // 就会阻塞，有超时时间的，会阻塞固定的时间，否则一致阻塞下去
             int spins = (shouldSpin(s) ?
                          (timed ? maxTimedSpins : maxUntimedSpins) : 0);
             for (;;) {
+                // 当前线程有无被打断，如果过了超时时间，当前线程就会被打断
                 if (w.isInterrupted())
                     s.tryCancel();
                 SNode m = s.match;
@@ -445,16 +490,20 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                     return m;
                 if (timed) {
                     nanos = deadline - System.nanoTime();
+                    // 超时了，取消当前线程的等待操作
                     if (nanos <= 0L) {
                         s.tryCancel();
                         continue;
                     }
                 }
+                // 自旋次数减少 1
                 if (spins > 0)
                     spins = shouldSpin(s) ? (spins-1) : 0;
+                // 把当前线程设置成 waiter，主要是通过线程来完成阻塞和唤醒
                 else if (s.waiter == null)
                     s.waiter = w; // establish waiter so can park next iter
                 else if (!timed)
+                    // 通过 park 进行阻塞
                     LockSupport.park(this);
                 else if (nanos > spinForTimeoutThreshold)
                     LockSupport.parkNanos(this, nanos);
@@ -523,6 +572,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
     }
 
     /** Dual Queue */
+    // 队列 先入先出 公平
     static final class TransferQueue<E> extends Transferer<E> {
         /*
          * This extends Scherer-Scott dual queue algorithm, differing,
@@ -534,10 +584,16 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
          */
 
         /** Node class for TransferQueue. */
+        // 队列的元素
         static final class QNode {
+            // 当前元素的下一个元素
             volatile QNode next;          // next node in queue
+            // 当前元素的值，如果当前元素被阻塞住了，等其他线程来唤醒自己时，其他线程
+            // 会把自己 set 到 item 里面
             volatile Object item;         // CAS'ed to or from null
+            // 可以阻塞住的当前线程
             volatile Thread waiter;       // to control park/unpark
+            // true 是 put，false 是 take
             final boolean isData;
 
             QNode(Object item, boolean isData) {
@@ -595,9 +651,9 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
         }
 
         /** Head of queue */
-        transient volatile QNode head;
+        transient volatile QNode head; /** 队列头 */
         /** Tail of queue */
-        transient volatile QNode tail;
+        transient volatile QNode tail; /** 队列尾 */
         /**
          * Reference to a cancelled node that might not yet have been
          * unlinked from queue because it was the last inserted node
@@ -668,30 +724,44 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
              */
 
             QNode s = null; // constructed/reused as needed
+            // true 是 put，false 是 get
             boolean isData = (e != null);
 
             for (;;) {
+                // 队列头和尾的临时变量,队列是空的时候，t=h
                 QNode t = tail;
                 QNode h = head;
+                // tail 和 head 没有初始化时，无限循环
+                // 虽然这种 continue 非常耗cpu，但感觉不会碰到这种情况
+                // 因为 tail 和 head 在 TransferQueue 初始化的时候，就已经被赋值空节点了
                 if (t == null || h == null)         // saw uninitialized value
                     continue;                       // spin
-
+                // 首尾节点相同，说明是空队列
+                // 或者尾节点的操作和当前节点操作一致
                 if (h == t || t.isData == isData) { // empty or same-mode
                     QNode tn = t.next;
+                    // 当 t 不是 tail 时，说明 tail 已经被修改过了
+                    // 因为 tail 没有被修改的情况下，t 和 tail 必然相等
+                    // 因为前面刚刚执行赋值操作： t = tail
                     if (t != tail)                  // inconsistent read
                         continue;
+                    // 队尾后面的值还不为空，t 还不是队尾，直接把 tn 赋值给 t，这是一步加强校验。
                     if (tn != null) {               // lagging tail
                         advanceTail(t, tn);
                         continue;
                     }
+                    // 超时直接返回 null
                     if (timed && nanos <= 0)        // can't wait
                         return null;
+                    // 构造node节点
                     if (s == null)
                         s = new QNode(e, isData);
+                    // 如果把 e 放到队尾失败，继续递归放进去
                     if (!t.casNext(null, s))        // failed to link in
                         continue;
 
                     advanceTail(t, s);              // swing tail and wait
+                    // 阻塞住自己
                     Object x = awaitFulfill(s, e, timed, nanos);
                     if (x == s) {                   // wait was cancelled
                         clean(t, s);
@@ -705,8 +775,12 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                         s.waiter = null;
                     }
                     return (x != null) ? (E)x : e;
-
+                // 队列不为空，并且当前操作和队尾不一致
+                // 也就是说当前操作是队尾相反的操作
+                // 比如说队尾是因为 take 被阻塞的，那么当前操作必然是 put
                 } else {                            // complementary-mode
+                    // 如果是第一次执行，此处的 m 代表就是 tail
+                    // 也就是这行代码体现出队列的公平，每次操作时，从头开始按照顺序进行操作
                     QNode m = h.next;               // node to fulfill
                     if (t != tail || m == null || h != head)
                         continue;                   // inconsistent read
@@ -714,12 +788,16 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
                     Object x = m.item;
                     if (isData == (x != null) ||    // m already fulfilled
                         x == m ||                   // m cancelled
+                        // m 代表栈头
+                        // 这里把当前的操作值赋值给阻塞住的 m 的 item 属性
+                        // 这样 m 被释放时，就可得到此次操作的值
                         !m.casItem(x, e)) {         // lost CAS
                         advanceHead(h, m);          // dequeue and retry
                         continue;
                     }
-
+                    // 当前操作放到队头
                     advanceHead(h, m);              // successfully fulfilled
+                    // 释放队头阻塞节点
                     LockSupport.unpark(m.waiter);
                     return (x != null) ? (E)x : e;
                 }
@@ -851,6 +929,7 @@ public class SynchronousQueue<E> extends AbstractQueue<E>
     /**
      * Creates a {@code SynchronousQueue} with nonfair access policy.
      */
+    // 无参构造器默认为非公平的
     public SynchronousQueue() {
         this(false);
     }

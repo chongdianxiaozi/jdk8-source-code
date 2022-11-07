@@ -490,6 +490,11 @@ public final class System {
      * @exception  NullPointerException if either <code>src</code> or
      *               <code>dest</code> is <code>null</code>.
      */
+    // src – the source array. 被拷贝的数组
+    // srcPos – starting position in the source array. 从数组哪里开始
+    // dest – the destination array. 目标数组
+    // destPos – starting position in the destination data. 从目标数组的哪个索引位置开始拷贝
+    // length – the number of array elements to be copied. 拷贝的长度
     public static native void arraycopy(Object src,  int  srcPos,
                                         Object dest, int destPos,
                                         int length);

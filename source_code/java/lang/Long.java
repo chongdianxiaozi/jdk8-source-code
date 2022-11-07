@@ -805,10 +805,11 @@ public final class Long extends Number implements Comparable<Long> {
 
     private static class LongCache {
         private LongCache(){}
-
+        // 缓存，范围从 -128 到 127，+1 是因为有个 0
         static final Long cache[] = new Long[-(-128) + 127 + 1];
-
+        // 容器初始化时，进行加载
         static {
+            // 缓存 Long 值，注意这里是 i - 128 ，所以再拿的时候就需要 + 128
             for(int i = 0; i < cache.length; i++)
                 cache[i] = new Long(i - 128);
         }
