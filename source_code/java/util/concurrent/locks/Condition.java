@@ -355,6 +355,8 @@ public interface Condition {
      * @throws InterruptedException if the current thread is interrupted
      *         (and interruption of thread suspension is supported)
      */
+    // 返回的 long 值表示剩余的给定等待时间，如果返回的时间小于等于 0 ，说明等待时间过了
+    // 选择纳秒是为了避免计算剩余等待时间时的截断误差
     long awaitNanos(long nanosTimeout) throws InterruptedException;
 
     /**
@@ -370,6 +372,7 @@ public interface Condition {
      * @throws InterruptedException if the current thread is interrupted
      *         (and interruption of thread suspension is supported)
      */
+    // 虽然入参可以是任意单位的时间，但底层仍然转化成纳秒
     boolean await(long time, TimeUnit unit) throws InterruptedException;
 
     /**
@@ -465,6 +468,7 @@ public interface Condition {
      * not held. Typically, an exception such as {@link
      * IllegalMonitorStateException} will be thrown.
      */
+    // 唤醒条件队列中的一个线程，在被唤醒前必须先获得锁
     void signal();
 
     /**
@@ -483,5 +487,6 @@ public interface Condition {
      * not held. Typically, an exception such as {@link
      * IllegalMonitorStateException} will be thrown.
      */
+    // 唤醒条件队列中的所有线程
     void signalAll();
 }
