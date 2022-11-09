@@ -126,34 +126,47 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * Performs non-fair tryLock.  tryAcquire is implemented in
          * subclasses, but both need nonfair try for trylock method.
          */
+        // 尝试获得非公平锁
         final boolean nonfairTryAcquire(int acquires) {
             final Thread current = Thread.currentThread();
             int c = getState();
+            // 同步器的状态是 0，表示同步器的锁没有人持有
             if (c == 0) {
+                // 当前线程持有锁
                 if (compareAndSetState(0, acquires)) {
+                    // 标记当前持有锁的线程是谁
                     setExclusiveOwnerThread(current);
                     return true;
                 }
             }
+            // 如果当前线程已经持有锁了，同一个线程可以对同一个资源重复加锁，代码实现的是可重入锁
             else if (current == getExclusiveOwnerThread()) {
+                // 当前线程持有锁的数量 + acquires
                 int nextc = c + acquires;
+                // int 是有最大值的，<0 表示持有锁的数量超过了 int 的最大值
                 if (nextc < 0) // overflow
                     throw new Error("Maximum lock count exceeded");
                 setState(nextc);
                 return true;
             }
+            // 否则线程进入同步队列
             return false;
         }
 
+        // 释放锁方法，非公平和公平锁都使用
         protected final boolean tryRelease(int releases) {
+            // 当前同步器的状态减去释放的个数，releases 一般为 1
             int c = getState() - releases;
+            // 当前线程根本都不持有锁，报错
             if (Thread.currentThread() != getExclusiveOwnerThread())
                 throw new IllegalMonitorStateException();
             boolean free = false;
+            // 如果 c 为 0，表示当前线程持有的锁都释放了
             if (c == 0) {
                 free = true;
                 setExclusiveOwnerThread(null);
             }
+            // 如果 c 不为 0，那么就是可重入锁，并且锁没有释放完，用 state 减去 releases 即可，无需做其他操作
             setState(c);
             return free;
         }
@@ -195,6 +208,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
     /**
      * Sync object for non-fair locks
      */
+    // 同步器 Sync 的两个子类锁之一:非公平锁
     static final class NonfairSync extends Sync {
         private static final long serialVersionUID = 7316153563782823691L;
 
@@ -202,13 +216,19 @@ public class ReentrantLock implements Lock, java.io.Serializable {
          * Performs lock.  Try immediate barge, backing up to normal
          * acquire on failure.
          */
+        // 加锁
         final void lock() {
+            // cas 给 state 赋值
             if (compareAndSetState(0, 1))
+                // cas 赋值成功，代表拿到当前锁，记录拿到锁的线程
                 setExclusiveOwnerThread(Thread.currentThread());
             else
+                // acquire 是抽象类AQS的方法,
+                // 会再次尝试获得锁，失败会进入到同步队列中
                 acquire(1);
         }
 
+        // 直接使用的是 Sync.nonfairTryAcquire 方法
         protected final boolean tryAcquire(int acquires) {
             return nonfairTryAcquire(acquires);
         }
@@ -217,9 +237,11 @@ public class ReentrantLock implements Lock, java.io.Serializable {
     /**
      * Sync object for fair locks
      */
+    // 同步器 Sync 的两个子类锁之一:公平锁
     static final class FairSync extends Sync {
         private static final long serialVersionUID = -3000897897090466540L;
 
+        // acquire 是 AQS 的方法，表示先尝试获得锁，失败之后进入同步队列阻塞等待
         final void lock() {
             acquire(1);
         }
@@ -232,12 +254,17 @@ public class ReentrantLock implements Lock, java.io.Serializable {
             final Thread current = Thread.currentThread();
             int c = getState();
             if (c == 0) {
+                // hasQueuedPredecessors 是实现公平的关键
+                // 会判断当前线程是不是属于同步队列的头节点的下一个节点(头节点是释放锁的节点)
+                // 如果是(返回false)，符合先进先出的原则，可以获得锁
+                // 如果不是(返回true)，则继续等待
                 if (!hasQueuedPredecessors() &&
                     compareAndSetState(0, acquires)) {
                     setExclusiveOwnerThread(current);
                     return true;
                 }
             }
+            // 可重入锁
             else if (current == getExclusiveOwnerThread()) {
                 int nextc = c + acquires;
                 if (nextc < 0)
@@ -253,6 +280,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * Creates an instance of {@code ReentrantLock}.
      * This is equivalent to using {@code ReentrantLock(false)}.
      */
+    // 无参数构造器，相当于 ReentrantLock(false)，默认是非公平的
     public ReentrantLock() {
         sync = new NonfairSync();
     }
@@ -282,6 +310,8 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * at which time the lock hold count is set to one.
      */
     public void lock() {
+        // 公平lock->FairSync.lock->AQS.acquire->FairSync.tryAcquire
+        // 非公平lock->NonfairSync.lock->AQS.acquire->NonfairSync.tryAcquire->Sync.nonfairTryAcquire
         sync.lock();
     }
 
@@ -361,7 +391,10 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      *         current thread, or the lock was already held by the current
      *         thread; and {@code false} otherwise
      */
+    // 无参构造器
+    // 非公平tryLock()且无公平的(即只有非公平的tryLock())->Sync.nonfairTryAcquire
     public boolean tryLock() {
+        // 入参数是 1 表示尝试获得一次锁
         return sync.nonfairTryAcquire(1);
     }
 
@@ -437,6 +470,9 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * @throws InterruptedException if the current thread is interrupted
      * @throws NullPointerException if the time unit is null
      */
+    // timeout 为超时的时间，在时间内，仍没有得到锁，会返回 false
+    // 公平tryLock时间入参->FairSync.tryAcquire
+    // 非公平tryLock时间入参->NonfairSync.tryAcquire->Sync.nonfairTryAcquire
     public boolean tryLock(long timeout, TimeUnit unit)
             throws InterruptedException {
         return sync.tryAcquireNanos(1, unit.toNanos(timeout));
@@ -453,6 +489,8 @@ public class ReentrantLock implements Lock, java.io.Serializable {
      * @throws IllegalMonitorStateException if the current thread does not
      *         hold this lock
      */
+    // 释放锁
+    // 公平非公平锁unlock->AQS.release->Sync.tryRelease
     public void unlock() {
         sync.release(1);
     }
