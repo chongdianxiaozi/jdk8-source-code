@@ -72,6 +72,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
      *
      * @param initialValue the initial value
      */
+    // 初始化
     public AtomicInteger(int initialValue) {
         value = initialValue;
     }
@@ -87,6 +88,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
      *
      * @return the current value
      */
+    // 得到当前值
     public final int get() {
         return value;
     }
@@ -154,6 +156,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
      *
      * @return the previous value
      */
+    // 自增 1，并返回自增之前的值
     public final int getAndIncrement() {
         return unsafe.getAndAddInt(this, valueOffset, 1);
     }
@@ -163,6 +166,7 @@ public class AtomicInteger extends Number implements java.io.Serializable {
      *
      * @return the previous value
      */
+    // 自减 1，并返回自减之前的值
     public final int getAndDecrement() {
         return unsafe.getAndAddInt(this, valueOffset, -1);
     }

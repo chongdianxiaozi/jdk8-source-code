@@ -169,16 +169,22 @@ public class CountDownLatch {
             return getState();
         }
 
+        // 如果当前同步器的状态是 0 的话，表示可获得锁
         protected int tryAcquireShared(int acquires) {
             return (getState() == 0) ? 1 : -1;
         }
 
+        // 对 state 进行递减，直到 state 变成 0；
+        // state 递减为 0 时，返回 true，其余返回 false
         protected boolean tryReleaseShared(int releases) {
             // Decrement count; signal when transition to zero
+            // 自旋保证 CAS 一定可以成功
             for (;;) {
                 int c = getState();
+                // state 已经是 0 了，直接返回 false
                 if (c == 0)
                     return false;
+                // 对 state 进行递减
                 int nextc = c-1;
                 if (compareAndSetState(c, nextc))
                     return nextc == 0;
@@ -195,8 +201,10 @@ public class CountDownLatch {
      *        before threads can pass through {@link #await}
      * @throws IllegalArgumentException if {@code count} is negative
      */
+    // 初始化,count 代表 state 的初始化值
     public CountDownLatch(int count) {
         if (count < 0) throw new IllegalArgumentException("count < 0");
+        // new Sync 底层代码是 state = count;
         this.sync = new Sync(count);
     }
 
