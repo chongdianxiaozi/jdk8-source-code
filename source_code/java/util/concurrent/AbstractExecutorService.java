@@ -83,6 +83,10 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * the underlying task
      * @since 1.6
      */
+    // 把 Runnable 转化成 RunnableFuture
+    // RunnableFuture 是一个接口，实现了 Runnable 和 Future
+    // FutureTask 是 RunnableFuture 的实现类，主要是对任务进行各种管理
+    // Runnable + Future => RunnableFuture => FutureTask
     protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T value) {
         return new FutureTask<T>(runnable, value);
     }
@@ -106,8 +110,10 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * @throws RejectedExecutionException {@inheritDoc}
      * @throws NullPointerException       {@inheritDoc}
      */
+    // 提交无返回值的任务
     public Future<?> submit(Runnable task) {
         if (task == null) throw new NullPointerException();
+        // ftask 其实是 FutureTask
         RunnableFuture<Void> ftask = newTaskFor(task, null);
         execute(ftask);
         return ftask;
@@ -128,8 +134,10 @@ public abstract class AbstractExecutorService implements ExecutorService {
      * @throws RejectedExecutionException {@inheritDoc}
      * @throws NullPointerException       {@inheritDoc}
      */
+    // 提交有返回值的任务
     public <T> Future<T> submit(Callable<T> task) {
         if (task == null) throw new NullPointerException();
+        // ftask 其实是 FutureTask
         RunnableFuture<T> ftask = newTaskFor(task);
         execute(ftask);
         return ftask;
